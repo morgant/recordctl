@@ -1,0 +1,82 @@
+.Dd $Mdocdate: August 10 2024 $
+.Dt RECORDCTL 1
+.Os
+.Sh NAME
+.Nm recordctl
+.Nd enable and disable kernel audio or video recording
+.Sh SYNOPSIS
+.Nm
+.Bk -words
+.Op Fl mqt
+.Op Fl a Ar state
+.Op Fl v Ar state
+.Ek
+.Sh DESCRIPTION
+The 
+.Nm
+utility provides a convenient way to enable, disable, or toggle audio and/or video recording in the kernel by setting the 
+.Cm kern.audio.record
+and 
+.Cm kern.video.record
+.Xr sysctl 8
+variables respectively.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl a Ar state
+Set the 
+.Cm kern.audio.record
+.Xr sysctl 8
+variable to state.
+.It Fl m
+Monitor and display recording state changes.
+(This feature is not yet implemented.)
+.It Fl q
+Suppress all output when setting a 
+.Xr sysctl 8
+variable.
+.It Fl t
+Toggle the value of 
+.Xr sysctl 8
+variables to their opposite state instead of setting an explicit value.
+.It Fl v Ar state
+Set the 
+.Cm kern.video.record
+.Xr sysctl 8
+variable to state.
+.El
+.Pp
+If no commands are specified, both 
+.Cm kern.audio.record 
+and 
+.Cm kern.video.record 
+.Xr sysctl 8
+variable values are toggled to their opposite state (0 -> 1 or 1 -> 0) and the names and values are displayed on
+.Em stdout .
+.Pp
+State values can be either 0 or 1, corresponding to the 
+.Em off
+and
+.Em on
+states respectively. Additionally, state values of "no", 
+"off", or "disable" will be converted to a value of 0 (corresponding
+to the 
+.Em off
+ state) and state values of "yes", "on", or "enable" will be 
+converted to a value of 1 (corresponding to the 
+.Em on
+state.) This is purely for convenience.
+.Sh EXAMPLES
+Toggle both audio and video recording:
+.Pp
+.Dl # recordctl
+.Pp
+Enable only audio recording and supress output:
+.Pp
+.Dl # recordctl -qa 0
+.Pp
+Toggle only video recording:
+.Pp
+.Dl # recordctl -tv
+.Sh SEE ALSO
+.Xr sysctl 8
