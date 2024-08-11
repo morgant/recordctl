@@ -13,6 +13,14 @@ It really just saves keystrokes so I can just type `doas recordctl` instead of `
 * Toggle the state of either/both `kern.audio.record` & `kern.video.record`
 * Defaults to toggling both audio/video recording states
 
+## INSTALLATION
+
+```
+git clone git@github.com:morgant/recordctl.git
+cd recordctl
+doas make install
+```
+
 ## USAGE
 
 To toggle both audio/video recording states:
