@@ -9,6 +9,11 @@
 #                       Initial version.
 # v0.1.1 - 2024-08-10 - Morgan Aldridge
 #                       Added Makefile and manual page.
+# v0.2   - 2024-09-06 - Morgan Aldridge
+#                       Exit with an error if not run as root and without
+#                       permitted by doas(1), automatically use doas(1) if
+#                       permitted, and added '-n' non-interactive option to
+#                       require 'nopass' in doas.conf(5).
 #
 # LICENSE:
 #
@@ -34,17 +39,44 @@
 
 quiet=""
 mode="set"
+nopass="false"
 audio=false
 video=false
 state=""
 action=""
+doas_cmd=""
 
 usage() {
-  echo "Usage: $(basename "$0") [-q] [-t | -m] [-a] [-v] <state>"
+  echo "Usage: $(basename "$0") [-q] [-t | -m] [-n] [-a] [-v] <state>"
+}
+
+_is_sysctl_permitted() {
+  _permitted=true
+
+  # in non-interactive/nopass mode, we must match for the whole "permit nopass"
+  # otherwise we only need to match the first word against "permit"
+  _match="permit"
+  $nopass && _match="${_match} nopass"
+
+  _key=""
+  _value=""
+  _doas_ressult=""
+  # we need to test that all the sysctl(8) variable & value permutations are permitted
+  for _cmd in "audio=0" "audio=1" "video=0" "video=1" ; do
+    _key="${_cmd%%=*}"
+    _value="${_cmd#*=}"
+    _doas_result="$(doas -C /etc/doas.conf sysctl kern.${_key}.record=${_value})"
+
+    # either "permit" or "permit nopass" are acceptable, except in non-interactive/nopass mode
+    # easier to just match the first word against "permit"
+    $nopass || _doas_result="${_doas_result%% *}"
+    [ "$_doas_result" != "$_match" ] && _permitted=false
+  done
+  $_permitted
 }
 
 # parse argument
-while getopts ahmqtv arg ; do
+while getopts ahmnqtv arg ; do
   case "$arg" in
     h)
       usage && exit
@@ -60,6 +92,9 @@ while getopts ahmqtv arg ; do
       ;;
     m)
       mode="monitor"
+      ;;
+    n)
+      nopass=true
       ;;
     q)
       quiet="-q"
@@ -96,14 +131,26 @@ if [ -z "$state" -a "$mode" != "monitor" ] ; then
   mode="toggle"
 fi
 
+# determine if user is permitted by doas(1) to set variables with sysctl(8) (root certainly is)
+if [ "$mode" != "monitor" -a "$(id -u)" -ne 0 ] ; then
+  # if doas(1) permits setting sysctl(8) variables, then use doas(1) to execute sysctl(8)
+  if _is_sysctl_permitted ; then
+    doas_cmd="doas"
+    $nopass && doas_cmd="${doas_cmd} -n"
+  else
+    echo "$(basename "$0"): Operation not permitted" && exit 1
+  fi
+fi
+
+# handle setting/toggling/monitoring recording state
 case "$mode" in
   set)
-    $audio && sysctl $quiet kern.audio.record="$state"
-    $video && sysctl $quiet kern.video.record="$state"
+    $audio && $doas_cmd sysctl $quiet kern.audio.record="$state"
+    $video && $doas_cmd sysctl $quiet kern.video.record="$state"
     ;;
   toggle)
-    $audio && sysctl $quiet kern.audio.record="$(( ! $(sysctl -n kern.audio.record) ))"
-    $video && sysctl $quiet kern.video.record="$(( ! $(sysctl -n kern.video.record) ))"
+    $audio && $doas_cmd sysctl $quiet kern.audio.record="$(( ! $(sysctl -n kern.audio.record) ))"
+    $video && $doas_cmd sysctl $quiet kern.video.record="$(( ! $(sysctl -n kern.video.record) ))"
     ;;
   monitor)
     echo "Not yet implemented! Exiting." && exit
