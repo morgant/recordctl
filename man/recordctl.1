@@ -1,4 +1,4 @@
-.Dd $Mdocdate: August 10 2024 $
+.Dd $Mdocdate: September 6 2024 $
 .Dt RECORDCTL 1
 .Os
 .Sh NAME
@@ -7,7 +7,7 @@
 .Sh SYNOPSIS
 .Nm
 .Bk -words
-.Op Fl mqt
+.Op Fl mnqt
 .Op Fl a Ar state
 .Op Fl v Ar state
 .Ek
@@ -21,6 +21,17 @@ and
 .Xr sysctl 8
 variables respectively.
 .Pp
+If run as a non-root user, it will check 
+.Xr doas.conf 5
+for appropriate rules that permit the user to execute
+.Xr sysctl 8
+to set the required permutations of the kernel variables.
+If appropriate rules permitting the user are found, it will automatically use
+.Xr doas 1
+to execute
+.Xr sysctl 8 
+commands.
+.Pp
 The options are as follows:
 .Bl -tag -width Ds
 .It Fl a Ar state
@@ -31,6 +42,18 @@ variable to state.
 .It Fl m
 Monitor and display recording state changes.
 (This feature is not yet implemented.)
+.It Fl n
+Non interactive mode, fail if 
+.Xr doas.conf 5
+does not have rules including the
+.Ic nopass
+option for 
+.Xr sysctl 8
+to set the 
+.Cm kern.audio.record
+and
+.Cm kern.video.record
+variable permutations.
 .It Fl q
 Suppress all output when setting a 
 .Xr sysctl 8
@@ -78,5 +101,36 @@ Enable only audio recording and supress output:
 Toggle only video recording:
 .Pp
 .Dl # recordctl -tv
+.Pp
+The following example 
+.Xr doas.conf 5
+rules, which should be considered very carefully for potential privacy and security impacts,
+will allow the user morgan to set only the permutations of the 
+.Xr sysctl 8
+.Cm kern.audio.record
+and
+.Cm kern.video.record
+variables without being prompted for a password:
+.Pp
+.Dl permit nopass morgan cmd sysctl args kern.audio.record=0
+.Dl permit nopass morgan cmd sysctl args kern.audio.record=1
+.Dl permit nopass morgan cmd sysctl args kern.video.record=0
+.Dl permit nopass morgan cmd sysctl args kern.video.record=1
+.Pp
+The user morgan can then toggle both audio and video recording without explicitly executing
+.Xr doas 1
+and using the non interactive option to ensure immediate failure if the aforementioned
+.Xr sysctl 8
+.Ic nopass
+rules are missing from
+.Xr doas.conf 5 .
+This is ideal for use from scripts or 
+.Xr X 7
+applications where an interactive prompt may not be available:
+.Pp
+.Dl $ recordctl -n
+.Pp
 .Sh SEE ALSO
 .Xr sysctl 8
+.Xr doas 1
+.Xr doas.conf 5
