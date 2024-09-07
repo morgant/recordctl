@@ -5,7 +5,7 @@ by Morgan Aldridge <morgant@makkintosshu.com>
 
 An overly-complex, but very convenient, utility for [OpenBSD](https://www.openbsd.org/) which provides a simple interface for enabling/disabling/toggling audio and/or video recording in the kernel with sensible defaults.
 
-It really just saves keystrokes so I can just type `doas recordctl` instead of `doas sysctl kern.{audi,vide}o.record=1` to enable both audio & video recording. Even better, another `doas recordctl` will disable both audio & video recording again without needing to type the whole `doas sysctl kern.{audi,vide}o.record=0`.
+It is intended to save keystrokes so that I only need to type `doas recordctl` instead of `doas sysctl kern.{audi,vide}o.record=1` to enable both audio & video recording. Another `doas recordctl` will disable both audio & video recording again without needing to type the whole of `doas sysctl kern.{audi,vide}o.record=0`.
 
 ## FEATURES
 

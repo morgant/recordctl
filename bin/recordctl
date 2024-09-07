@@ -9,6 +9,8 @@
 #                       Initial version.
 # v0.1.1 - 2024-08-10 - Morgan Aldridge
 #                       Added Makefile and manual page.
+# v0.1.2 - 2024-09-07 - Morgan Aldridge
+#                       Require root.
 #
 # LICENSE:
 #
@@ -32,6 +34,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+tool="$(basename "$0")"
 quiet=""
 mode="set"
 audio=false
@@ -40,8 +43,14 @@ state=""
 action=""
 
 usage() {
-  echo "Usage: $(basename "$0") [-q] [-t | -m] [-a] [-v] <state>"
+  echo "Usage: ${tool} [-q] [-t | -m] [-a] [-v] <state>"
 }
+
+# require root
+if [ "$(id -u)" -ne 0 ] ; then
+  echo "${tool}: need root privileges"
+  exit 1
+fi
 
 # parse argument
 while getopts ahmqtv arg ; do
