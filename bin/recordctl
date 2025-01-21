@@ -11,10 +11,18 @@
 #                       Added Makefile and manual page.
 # v0.1.2 - 2024-09-07 - Morgan Aldridge
 #                       Require root.
+# v?.?.? - 2025-01-20 - Morgan Aldridge
+#                       List audio/video record state by default, instead of
+#                       toggling state.  Changed option for showing/setting
+#                       audio record state from '-a' to '-A'. Changed option
+#                       for showing/setting video record state from '-v' to
+#                       '-V'. Added new '-a' option to show both audio and
+#                       video record states (now the default). Replaced use
+#                       of echo with printf. Updated usage output.
 #
 # LICENSE:
 #
-# Copyright (c) 2024 Morgan Aldridge
+# Copyright (c) 2024-2025 Morgan Aldridge
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -36,42 +44,43 @@
 
 tool="$(basename "$0")"
 quiet=""
-mode="set"
+mode="get"
 audio=false
 video=false
 state=""
-action=""
 
 usage() {
-  echo "Usage: ${tool} [-q] [-t | -m] [-a] [-v] <state>"
+  printf "Usage: %s [-ahmqt] [[-AV] state]\n" "$tool"
 }
 
 # require root
 if [ "$(id -u)" -ne 0 ] ; then
-  echo "${tool}: need root privileges"
-  exit 1
+  printf "%s: need root privileges!\n" "$tool" && exit 1
 fi
 
 # parse argument
-while getopts ahmqtv arg ; do
+while getopts aAhmqtV arg ; do
   case "$arg" in
-    h)
-      usage && exit
-      ;;
     a)
+      mode="get"
+      ;;
+    A)
       audio=true
       ;;
-    v)
-      video=true
-      ;;
-    t)
-      mode="toggle"
+    h)
+      usage && exit
       ;;
     m)
       mode="monitor"
       ;;
     q)
       quiet="-q"
+      ;;
+    t)
+      mode="toggle"
+      ;;
+    V)
+      video=true
       ;;
     ?)
       usage && exit 2
@@ -83,11 +92,14 @@ shift $((OPTIND - 1))
 case "$1" in
   1|yes|on|enable)
     state=1
+    mode="set"
     ;;
   0|no|off|disable)
     state=0
+    mode="set"
     ;;
   "")
+    [ "$mode" = "set" ] && printf "%s: no state specified!\n" "$tool" && usage && exit 2
     ;;
   *)
     usage && exit 2
@@ -100,12 +112,11 @@ if ! $audio && ! $video ; then
   video=true
 fi
 
-# default to toggling record state if no state was specified (and not monitoring)
-if [ -z "$state" -a "$mode" != "monitor" ] ; then
-  mode="toggle"
-fi
-
 case "$mode" in
+  get)
+    $audio && sysctl kern.audio.record
+    $video && sysctl kern.video.record
+    ;;
   set)
     $audio && sysctl $quiet kern.audio.record="$state"
     $video && sysctl $quiet kern.video.record="$state"
@@ -115,6 +126,6 @@ case "$mode" in
     $video && sysctl $quiet kern.video.record="$(( ! $(sysctl -n kern.video.record) ))"
     ;;
   monitor)
-    echo "Not yet implemented! Exiting." && exit
+    printf "%s: Not yet implemented! Exiting.\n" "$tool" && exit
     ;;
 esac

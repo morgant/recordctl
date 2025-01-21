@@ -1,4 +1,4 @@
-.Dd $Mdocdate: August 10 2024 $
+.Dd $Mdocdate: January 20 2025 $
 .Dt RECORDCTL 1
 .Os
 .Sh NAME
@@ -7,9 +7,9 @@
 .Sh SYNOPSIS
 .Nm
 .Bk -words
-.Op Fl mqt
-.Op Fl a Ar state
-.Op Fl v Ar state
+.Op Fl ahmqt
+.Op Fl A Ar state
+.Op Fl V Ar state
 .Ek
 .Sh DESCRIPTION
 The 
@@ -23,8 +23,13 @@ variables respectively.
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
-.It Fl a Ar state
-Set the 
+.It Fl a
+Display the value of all
+.Cm kern.*.record
+.Xr sysctl 8
+variables.
+.It Fl A Ar state
+Set the
 .Cm kern.audio.record
 .Xr sysctl 8
 variable to state.
@@ -39,7 +44,7 @@ variable.
 Toggle the value of 
 .Xr sysctl 8
 variables to their opposite state instead of setting an explicit value.
-.It Fl v Ar state
+.It Fl V Ar state
 Set the 
 .Cm kern.video.record
 .Xr sysctl 8
@@ -51,7 +56,29 @@ If no commands are specified, both
 and 
 .Cm kern.video.record 
 .Xr sysctl 8
-variable values are toggled to their opposite state (0 -> 1 or 1 -> 0) and the names and values are displayed on
+variable names and values are displayed on
+.Em stdout .
+.Pp
+If the
+.Em -t
+option is specified and neither the
+.Em -A
+(audio) or
+.Em -V
+(video) options are specified, both
+.Cm kern.audio.record
+and
+.Cm kern.video.record
+.Xr sysctl 8
+variable values are toggled to their opposite state (0 -> 1 or 1 -> 0) with the variable names and values displayed on
+.Em stdout .
+If either of the
+.Em -A
+or
+.Em -V
+options are specified, only the specified
+.Xr sysctl 8
+variables will be toggled and displayed on
 .Em stdout .
 .Pp
 State values can be either 0 or 1, corresponding to the 
@@ -67,16 +94,22 @@ converted to a value of 1 (corresponding to the
 .Em on
 state.) This is purely for convenience.
 .Sh EXAMPLES
-Toggle both audio and video recording:
+Show both audio and video recording
+.Xr sysctl 8
+variable values:
 .Pp
 .Dl # recordctl
 .Pp
+Toggle both audio and video recording:
+.Pp
+.Dl # recordctl -t
+.Pp
 Enable only audio recording and supress output:
 .Pp
-.Dl # recordctl -qa 0
+.Dl # recordctl -qA 0
 .Pp
 Toggle only video recording:
 .Pp
-.Dl # recordctl -tv
+.Dl # recordctl -tV
 .Sh SEE ALSO
 .Xr sysctl 8
