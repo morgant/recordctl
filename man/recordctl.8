@@ -18,7 +18,7 @@ utility provides a convenient way to enable, disable, or toggle audio and/or vid
 and 
 .Cm kern.video.record
 .Xr sysctl 8
-variables respectively.
+variables respectively. Alternatively, it can display whether audio and/or video recording is enabled in the kernel or monitor for changes in state.
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
@@ -26,11 +26,19 @@ The options are as follows:
 Display the value of all recording controls. This is the default, if no parameters
 are given to 
 .Nm recordctl .
+.It Fl c
+Set the number of seconds delay between checks of the state of
+.Xr sysctl 8
+variables when operating in monitoring mode using the
+.Cm -m
+option.
 .It Fl d
 Dump the raw list of available controls and exit.  Useful as a debugging tool.
 .It Fl m
-Monitor and display recording controls state changes.
-(This feature is not yet implemented.)
+Monitor and display recording state changes. Output format is the same as
+.Xr sndioctl 8
+.Cm -m
+monitor option.
 .It Fl n
 Suppress printing of the control name. Useful for setting shell variables. For example, to set the recordable shell variable to the state of audio recording:
 .Pp
