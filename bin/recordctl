@@ -21,6 +21,14 @@
 #                       Added new 'n' option to supress printing control
 #                       name and only print value. Replaced use of echo
 #                       with printf. Updated usage output.
+# v?.?.? - 2025-01-22 - Morgan Aldridge
+#                       Implemented previously stubbed-out monitor mode,
+#                       including new '-c' option for specifying the
+#                       number of seconds between checks of applicable
+#                       sysctl(8) variables. Improved error messages when
+#                       incompatible options and arguments are combined.
+#                       Only requires root privileges for set & toggle
+#                       functionality, not get or monitor.
 #
 # LICENSE:
 #
@@ -48,9 +56,10 @@ tool="$(basename "$0")"
 quiet=false
 no_name=false
 mode="get"
+monitor_seconds=5
 
 usage() {
-  printf "Usage: %s [-adhmnqt] [name[=value]]\n" "$tool"
+  printf "Usage: %s [-adhnqt] [-m [-c seconds]] [name[=value]]\n" "$tool"
 }
 
 validate_var() {
@@ -125,16 +134,38 @@ set_var() {
   esac
 }
 
-# require root
-if [ "$(id -u)" -ne 0 ] ; then
-  printf "%s: need root privileges!\n" "$tool" && exit 1
-fi
+monitor() {
+  _audio_prev="$(sysctl -n kern.audio.record)"
+  _video_prev="$(sysctl -n kern.video.record)"
+  while true ; do
+    sleep "$monitor_seconds"
+
+    _audio_new="$(sysctl -n kern.audio.record)"
+    _video_new="$(sysctl -n kern.video.record)"
+
+    if [ "$_audio_new" -ne "$_audio_prev" ] ; then
+      printf "record.audio=%i\t#changed\n" "$_audio_new"
+      _audio_prev="$_audio_new"
+    fi
+    if [ "$_video_new" -ne "$_video_prev" ] ; then
+      printf "record.video=%i\t#changed\n" "$_video_new"
+      _video_prev="$_video_new"
+    fi
+  done
+}
+
+require_root() {
+  [ "$(id -u)" -ne 0 ] && printf "%s: need root privileges!\n" "$tool" && exit 1
+}
 
 # parse argument
-while getopts adhmnqt arg ; do
+while getopts ac:dhmnqt arg ; do
   case "$arg" in
     a)
       mode="get"
+      ;;
+    c)
+      monitor_seconds="$OPTARG"
       ;;
     h)
       usage && exit
@@ -160,32 +191,50 @@ shift $((OPTIND - 1))
 
 case "$mode" in
   toggle)
+    require_root
+    [ $# -gt 0 ] && printf "%s: toggling via '-t' option, so ignoring specified control(s) '%s'\n" "$tool" "$@" 1>&2
+
     for _name in record.audio record.video ; do
       set_var "$_name" "!" "$quiet" "$no_name"
     done
     ;;
   monitor)
-    printf "%s: Not yet implemented! Exiting.\n" "$tool" && exit
+    [ $# -gt 0 ] && printf "%s: monitoring state changes via '-m' option, so ignoring specified control(s) '%s'\n" "$tool" "$@" 1>&2
+    monitor
     ;;
   *)
     # process any remaining commands
-    if [ "$#" -gt 0 ] && [ "$mode" != "toggle" ] && [ "$mode" != "monitor" ] ; then
+    if [ "$#" -gt 0 ] ; then
       while [ $# -gt 0 ] ; do
         case "$1" in
-          # set variable
+          # set control value
           *=*)
             mode="set"
             _name="${1%%=*}"
             _value="${1##*=}"
-            ! validate_var "$_name" && usage && exit 2
-            ! validate_value "$_value" && usage && exit 2
+
+            require_root
+            ! validate_var "$_name" \
+              && printf "%s: unknown control name '%s'!\n" "$tool" "$_name" 1>&2 \
+              && usage \
+              && exit 2
+            ! validate_value "$_value" \
+              printf "%s: invalid value '%s' for control '%s'!\n" "$tool" "$_value" "$_name" 1>&2 \
+              && usage \
+              && exit 2
+
             set_var "$_name" "$_value" "$quiet" "$no_name"
             ;;
-          # get variable
+          # get control value
           *)
             mode="get"
-            ! validate_var "$1" && usage && exit 2
-            get_var "$1" "$no_name"
+            _name="${1%%=*}"
+
+            ! validate_var "$1" \
+              && printf "%s: unknown control name '%s'!\n" "$tool" "$_name" 1>&2 \
+              && usage && exit 2
+
+            get_var "$_name" "$no_name"
             ;;
         esac
         shift
