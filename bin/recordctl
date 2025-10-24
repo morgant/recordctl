@@ -11,7 +11,7 @@
 #                       Added Makefile and manual page.
 # v0.1.2 - 2024-09-07 - Morgan Aldridge
 #                       Require root.
-# v?.?.? - 2025-10-24 - Morgan Aldridge
+# v0.2.0 - 2025-10-24 - Morgan Aldridge
 #                       List audio/video record state by default, instead of
 #                       toggling state.  Changed options for showing/setting
 #                       audio & video record state from '-a' & '-v' to
