@@ -7,9 +7,8 @@
 .Sh SYNOPSIS
 .Nm
 .Bk -words
-.Op Fl ahmqt
-.Op Fl A Ar state
-.Op Fl V Ar state
+.Op Fl dhmnqt
+.Op Ar name Ns Op = Ns Ar value
 .Ek
 .Sh DESCRIPTION
 The 
@@ -24,92 +23,112 @@ variables respectively.
 The options are as follows:
 .Bl -tag -width Ds
 .It Fl a
-Display the value of all
-.Cm kern.*.record
-.Xr sysctl 8
-variables.
-.It Fl A Ar state
-Set the
-.Cm kern.audio.record
-.Xr sysctl 8
-variable to state.
+Display the value of all recording controls. This is the default, if no parameters
+are given to 
+.Nm recordctl .
+.It Fl d
+Dump the raw list of available controls and exit.  Useful as a debugging tool.
 .It Fl m
-Monitor and display recording state changes.
+Monitor and display recording controls state changes.
 (This feature is not yet implemented.)
+.It Fl n
+Suppress printing of the control name. Useful for setting shell variables. For example, to set the recordable shell variable to the state of audio recording:
+.Pp
+.Dl # set recordable=`recordctl -n record.audio`
 .It Fl q
-Suppress all output when setting a 
-.Xr sysctl 8
-variable.
+Suppress all output when setting a control value. This option overrides the behaviour of 
+.Fl n .
 .It Fl t
-Toggle the value of 
-.Xr sysctl 8
-variables to their opposite state instead of setting an explicit value.
-.It Fl V Ar state
-Set the 
+Toggle the value of the
+.Cm kern.audio.record
+and 
 .Cm kern.video.record
 .Xr sysctl 8
-variable to state.
+controls to their opposite value instead of setting an explicit value. All other controls specified will be ignored.
+.It Ar name Ns Op = Ns Ar value
+Retrieve the specified control
+.Ar name ,
+or attempt to set it to
+.Ar value .
+Multiple
+.Ar name Ns Op = Ns Ar value
+arguments may be given.
 .El
 .Pp
-If no commands are specified, both 
-.Cm kern.audio.record 
-and 
-.Cm kern.video.record 
-.Xr sysctl 8
-variable names and values are displayed on
+If no controls are specified, all recording control names and values are displayed
+on
 .Em stdout .
+Unless
+.Fl d ,
+.Fl m ,
+or
+.Fl n
+are used, displayed lines are valid controls.
+.Pp
+The set of available controls is:
+.Pp
+.Bl -column "record.audio" "Equivalent To" -offset indent
+.It Sy "Name" Ta Sy "Equivalent To"
+.It Dv "record.audio" Ta "sysctl kern.audio.record"
+.It Dv "record.video" Ta "sysctl kern.video.record"
+.El
+.Pp
+The general format (in both getting and setting a control value) is:
+.Pp
+.D1 function.name=value
+.Pp
+The
+.Ar function 
+can have values like
+.Dq record 
+or
+.Dq mix ,
+indicating that the control affects the recording or mixing functions, respectively.
+The
+.Ar name
+indicates what part of the function the control affects.
+.Pp
+The
+.Ar value
+can be either 0 or 1, corresponding to the 
+.Em off
+or
+.Em on
+states, respectively. If
+.Qq \&!
+is used instead of a number, then the value is toggled to the opposite state (0 -> 1 or 1 -> 0).
 .Pp
 If the
 .Em -t
-option is specified and neither the
-.Em -A
-(audio) or
-.Em -V
-(video) options are specified, both
-.Cm kern.audio.record
+option is specified, both
+.Cm record.audio
 and
-.Cm kern.video.record
-.Xr sysctl 8
-variable values are toggled to their opposite state (0 -> 1 or 1 -> 0) with the variable names and values displayed on
-.Em stdout .
-If either of the
-.Em -A
-or
-.Em -V
-options are specified, only the specified
-.Xr sysctl 8
-variables will be toggled and displayed on
-.Em stdout .
-.Pp
-State values can be either 0 or 1, corresponding to the 
-.Em off
-and
-.Em on
-states respectively. Additionally, state values of "no", 
-"off", or "disable" will be converted to a value of 0 (corresponding
-to the 
-.Em off
- state) and state values of "yes", "on", or "enable" will be 
-converted to a value of 1 (corresponding to the 
-.Em on
-state.) This is purely for convenience.
+.Cm record.video
+control values are toggled to their opposite state (0 -> 1 or 1 -> 0) with the variable names and values displayed on
+.Em stdout . Any specific controls specified are ignored.
+
 .Sh EXAMPLES
-Show both audio and video recording
-.Xr sysctl 8
-variable values:
+Show both audio and video recording control values:
 .Pp
 .Dl # recordctl
+.Dl record.audio=0
+.Dl record.video=0
 .Pp
 Toggle both audio and video recording:
 .Pp
 .Dl # recordctl -t
+.Dl record.audio=1
+.Dl record.video=1
 .Pp
 Enable only audio recording and supress output:
 .Pp
-.Dl # recordctl -qA 0
+.Dl # recordctl -q record.audio=1
 .Pp
 Toggle only video recording:
 .Pp
-.Dl # recordctl -tV
+.Dl # recordctl record.video=!
+.Dl record.video=0
 .Sh SEE ALSO
-.Xr sysctl 8
+.Xr sysctl 8 ,
+.Xr mixerctl 8 ,
+.Xr sndioctl 1

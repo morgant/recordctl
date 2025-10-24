@@ -11,14 +11,16 @@
 #                       Added Makefile and manual page.
 # v0.1.2 - 2024-09-07 - Morgan Aldridge
 #                       Require root.
-# v?.?.? - 2025-01-20 - Morgan Aldridge
+# v?.?.? - 2025-10-24 - Morgan Aldridge
 #                       List audio/video record state by default, instead of
-#                       toggling state.  Changed option for showing/setting
-#                       audio record state from '-a' to '-A'. Changed option
-#                       for showing/setting video record state from '-v' to
-#                       '-V'. Added new '-a' option to show both audio and
-#                       video record states (now the default). Replaced use
-#                       of echo with printf. Updated usage output.
+#                       toggling state.  Changed options for showing/setting
+#                       audio & video record state from '-a' & '-v' to
+#                       a control sytax like sysctl(8), mixerctl(8), and
+#                       sndioctl(1). Added new '-a' option to show both audio
+#                       and video record control states (now the default).
+#                       Added new 'n' option to supress printing control
+#                       name and only print value. Replaced use of echo
+#                       with printf. Updated usage output.
 #
 # LICENSE:
 #
@@ -43,14 +45,84 @@
 # SOFTWARE.
 
 tool="$(basename "$0")"
-quiet=""
+quiet=false
+no_name=false
 mode="get"
-audio=false
-video=false
-state=""
 
 usage() {
-  printf "Usage: %s [-ahmqt] [[-AV] state]\n" "$tool"
+  printf "Usage: %s [-adhmnqt] [name[=value]]\n" "$tool"
+}
+
+validate_var() {
+  _valid=false
+  case "$1" in
+    "record.audio"|"record.video")
+      _valid=true
+      ;;
+  esac
+  $_valid
+}
+
+validate_value() {
+  _valid=false
+  case "$1" in
+    0|1|!) _valid=true ;;
+  esac
+  $_valid
+}
+
+# @param _var [String] the name of the variable to get the value for
+# @param _no_name ["true", "false"] (optional) whether to output the variable name with the value (default: "true")
+get_var() {
+  [ -z "$1" ] && usage && exit 2
+
+  _var="$1"
+  _no_name=false
+
+  [ -n "$2" ] && _no_name="$2"
+
+  case "$_var" in
+    record.*)
+      _input="${_var##*.}"
+      ! $_no_name && printf "%s=" "$_var"
+      sysctl -n "kern.${_input}.record"
+      ;;
+    *)
+      usage && exit 2
+      ;;
+  esac
+}
+
+# @param _var [String] the name of the variable to set the value for
+# @param _value [0, 1, "!"] the value to set the variable to ("!" will toggle the current value)
+# @param _quiet ["true", "false"] (optional) whether to hide all output when setting the value (default: "false")
+# @param _no_name ["true", "false"] (optional) whether to output the variable name with the value (default: "true")
+set_var() {
+  [ -z "$1" ] && usage && exit 2
+  [ -z "$2" ] && usage && exit 2
+
+  _var="$1"
+  _value="$2"
+  _quiet=false
+  _no_name=false
+
+  [ -n "$3" ] && _quiet="$3"
+  [ -n "$4" ] && _no_name="$4"
+
+  case "$_var" in
+    record.*)
+      _input="${_var##*.}"
+
+      # if toggling the value, get the current value and negate it (silently)
+      [ "$_value" = "!" ] && _value="$(( ! $(get_var "$_var" true) ))"
+
+      ! $_quiet && ! $_no_name && printf "%s=" "$_var"
+      sysctl $($_quiet && echo "-q") -n "kern.${_input}.record=${_value}"
+      ;;
+    *)
+      usage && exit 2
+      ;;
+  esac
 }
 
 # require root
@@ -59,13 +131,10 @@ if [ "$(id -u)" -ne 0 ] ; then
 fi
 
 # parse argument
-while getopts aAhmqtV arg ; do
+while getopts adhmnqt arg ; do
   case "$arg" in
     a)
       mode="get"
-      ;;
-    A)
-      audio=true
       ;;
     h)
       usage && exit
@@ -73,14 +142,14 @@ while getopts aAhmqtV arg ; do
     m)
       mode="monitor"
       ;;
+    n)
+      no_name=true
+      ;;
     q)
-      quiet="-q"
+      quiet=true
       ;;
     t)
       mode="toggle"
-      ;;
-    V)
-      video=true
       ;;
     ?)
       usage && exit 2
@@ -88,44 +157,44 @@ while getopts aAhmqtV arg ; do
   esac
 done
 shift $((OPTIND - 1))
-[ $# -gt 1 ] && usage && exit 2
-case "$1" in
-  1|yes|on|enable)
-    state=1
-    mode="set"
-    ;;
-  0|no|off|disable)
-    state=0
-    mode="set"
-    ;;
-  "")
-    [ "$mode" = "set" ] && printf "%s: no state specified!\n" "$tool" && usage && exit 2
-    ;;
-  *)
-    usage && exit 2
-    ;;
-esac
-
-# default to applying record state to both audio & video if neither was explicitly specified
-if ! $audio && ! $video ; then
-  audio=true
-  video=true
-fi
 
 case "$mode" in
-  get)
-    $audio && sysctl kern.audio.record
-    $video && sysctl kern.video.record
-    ;;
-  set)
-    $audio && sysctl $quiet kern.audio.record="$state"
-    $video && sysctl $quiet kern.video.record="$state"
-    ;;
   toggle)
-    $audio && sysctl $quiet kern.audio.record="$(( ! $(sysctl -n kern.audio.record) ))"
-    $video && sysctl $quiet kern.video.record="$(( ! $(sysctl -n kern.video.record) ))"
+    for _name in record.audio record.video ; do
+      set_var "$_name" "!" "$quiet" "$no_name"
+    done
     ;;
   monitor)
     printf "%s: Not yet implemented! Exiting.\n" "$tool" && exit
+    ;;
+  *)
+    # process any remaining commands
+    if [ "$#" -gt 0 ] && [ "$mode" != "toggle" ] && [ "$mode" != "monitor" ] ; then
+      while [ $# -gt 0 ] ; do
+        case "$1" in
+          # set variable
+          *=*)
+            mode="set"
+            _name="${1%%=*}"
+            _value="${1##*=}"
+            ! validate_var "$_name" && usage && exit 2
+            ! validate_value "$_value" && usage && exit 2
+            set_var "$_name" "$_value" "$quiet" "$no_name"
+            ;;
+          # get variable
+          *)
+            mode="get"
+            ! validate_var "$1" && usage && exit 2
+            get_var "$1" "$no_name"
+            ;;
+        esac
+        shift
+      done
+    else
+      for _name in record.audio record.video ; do
+        mode="get"
+        get_var "$_name" "$no_name"
+      done
+    fi
     ;;
 esac
