@@ -21,14 +21,14 @@
 #                       Added new 'n' option to supress printing control
 #                       name and only print value. Replaced use of echo
 #                       with printf. Updated usage output.
-# v?.?.? - 2025-01-22 - Morgan Aldridge
+# v0.3.0 - 2025-10-24 - Morgan Aldridge
 #                       Implemented previously stubbed-out monitor mode,
 #                       including new '-c' option for specifying the
 #                       number of seconds between checks of applicable
-#                       sysctl(8) variables. Improved error messages when
-#                       incompatible options and arguments are combined.
-#                       Only requires root privileges for set & toggle
-#                       functionality, not get or monitor.
+#                       sysctl(8) variables. Improved error messages and
+#                       warnings when incompatible options and arguments
+#                       are combined. Only requires root privileges for set 
+#                       and toggle functionality, not get or monitor.
 #
 # LICENSE:
 #
@@ -135,13 +135,16 @@ set_var() {
 }
 
 monitor() {
-  _audio_prev="$(sysctl -n kern.audio.record)"
-  _video_prev="$(sysctl -n kern.video.record)"
+  _audio_prev="$(get_var "record.audio" true)"
+  _video_prev="$(get_var "record.video" true)"
+  printf "record.audio=%s\n" "$_audio_prev"
+  printf "record.video=%s\n" "$_video_prev"
+
   while true ; do
     sleep "$monitor_seconds"
 
-    _audio_new="$(sysctl -n kern.audio.record)"
-    _video_new="$(sysctl -n kern.video.record)"
+    _audio_new="$(get_var "record.audio" true)"
+    _video_new="$(get_var "record.video" true)"
 
     if [ "$_audio_new" -ne "$_audio_prev" ] ; then
       printf "record.audio=%i\t#changed\n" "$_audio_new"
@@ -192,14 +195,14 @@ shift $((OPTIND - 1))
 case "$mode" in
   toggle)
     require_root
-    [ $# -gt 0 ] && printf "%s: toggling via '-t' option, so ignoring specified control(s) '%s'\n" "$tool" "$@" 1>&2
+    [ $# -gt 0 ] && printf "%s: toggling via '-t' option, so ignoring specified control(s): %s\n" "$tool" "$@" >&2
 
     for _name in record.audio record.video ; do
       set_var "$_name" "!" "$quiet" "$no_name"
     done
     ;;
   monitor)
-    [ $# -gt 0 ] && printf "%s: monitoring state changes via '-m' option, so ignoring specified control(s) '%s'\n" "$tool" "$@" 1>&2
+    [ $# -gt 0 ] && printf "%s: monitoring state changes via '-m' option, so ignoring specified control(s): %s\n" "$tool" "$@" >&2
     monitor
     ;;
   *)
@@ -215,11 +218,11 @@ case "$mode" in
 
             require_root
             ! validate_var "$_name" \
-              && printf "%s: unknown control name '%s'!\n" "$tool" "$_name" 1>&2 \
+              && printf "%s: unknown control name '%s'!\n" "$tool" "$_name" >&2 \
               && usage \
               && exit 2
             ! validate_value "$_value" \
-              printf "%s: invalid value '%s' for control '%s'!\n" "$tool" "$_value" "$_name" 1>&2 \
+              printf "%s: invalid value '%s' for control '%s'!\n" "$tool" "$_value" "$_name" >&2 \
               && usage \
               && exit 2
 
@@ -231,7 +234,7 @@ case "$mode" in
             _name="${1%%=*}"
 
             ! validate_var "$1" \
-              && printf "%s: unknown control name '%s'!\n" "$tool" "$_name" 1>&2 \
+              && printf "%s: unknown control name '%s'!\n" "$tool" "$_name" >&2 \
               && usage && exit 2
 
             get_var "$_name" "$no_name"
