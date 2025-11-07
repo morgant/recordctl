@@ -21,14 +21,17 @@
 #                       Added new 'n' option to supress printing control
 #                       name and only print value. Replaced use of echo
 #                       with printf. Updated usage output.
-# v0.3.0 - 2025-10-24 - Morgan Aldridge
+# v0.3.0 - 2025-11-07 - Morgan Aldridge
 #                       Implemented previously stubbed-out monitor mode,
 #                       including new '-c' option for specifying the
 #                       number of seconds between checks of applicable
 #                       sysctl(8) variables. Improved error messages and
 #                       warnings when incompatible options and arguments
 #                       are combined. Only requires root privileges for set 
-#                       and toggle functionality, not get or monitor.
+#                       and toggle functionality, not get or monitor. Added
+#                       new 'mix.monitor' control for checking and/or
+#                       configuring appropriate monitor mix sndiod(8) flags
+#                       via rcctl(8) and restarting sndiod(8), as necessary.
 #
 # LICENSE:
 #
@@ -53,22 +56,103 @@
 # SOFTWARE.
 
 tool="$(basename "$0")"
+
+# defaults
 quiet=false
 no_name=false
 mode="get"
 monitor_seconds=5
+controls="record.audio record.video mix.monitor"
+run_path="/var/run/${tool}"
+sndiod_path="$(which sndiod)"
+sndiod_user="_sndio"
+sndiod_monitor_flags="-m play,mon -s mon"
 
 usage() {
   printf "Usage: %s [-adhnqt] [-m [-c seconds]] [name[=value]]\n" "$tool"
 }
 
+get_sndiod_flags() {
+  _sndiod_running=false
+
+  # get flags for currently running sndiod(8) process, if running
+  _process_flags="$(pgrep -u "$sndiod_user" -lf "$sndiod_path")"
+  [ -n "$_process_flags" ] \
+    && _sndiod_running=true \
+    && _process_flags="${_process_flags##*"$sndiod_path "}"
+
+  # get flags for sndiod(8) as configured in rcctl(8)
+  _rcctl_flags="$(rcctl get sndiod flags)" 
+
+  if $_sndiod_running ; then
+    # if sndiod(8) is running, report the processes flags (but warn if they differ from rcctl)
+    [ "$_process_flags" != "$_rcctl_flags" ] \
+      && printf "%s: mismatch between flags for running sndiod process ('%s') and rcctl configuration ('%s')!\n" "$tool" "$_process_flags" "$_rcctl_flags" >&2
+    printf "%s\n" "$_process_flags"
+  else
+    # if sndiod(8) is _not_ running, report the rcctl flags (but warn that it's not running)
+    printf "%s: sndiod is not running!\n" "$tool" >&2
+    printf "%s\n" "$_rcctl_flags"
+  fi
+}
+
+remove_sndiod_monitor_flags() {
+  printf "%s\n" "${1%%"$sndiod_monitor_flags"}"
+}
+
+# @param _flags [String] the sndiod(8) flags (e.g. from `rcctl get sndiod flags`)
+# @return '0' when flags end in the standard "monitor mix" sndiod(8) flags, otherwise '1'
+are_sndiod_monitor_flags() {
+
+  [ "$1" != "$(remove_sndiod_monitor_flags "$1")" ]
+}
+
+set_sndiod_flags() {
+  _new_flags="$1"
+
+  _sndid_path="$(which sndiod)"
+  _sndiod_running=false
+
+  # get flags for current sndiod(8) process, if running
+  # NOTE: only supports processes launched via rcctl(8) and running as the _sndio user
+  _process_flags="$(pgrep -u "$sndiod_user" -lf "$sndiod_path")"
+  [ -n "$_process_flags" ] \
+    && _sndiod_running=true \
+    && _process_flags="${_process_flags##*"$sndiod_path "}"
+
+  # get flags for sndiod(8) as configured in rcctl(8)
+  _rcctl_flags="$(rcctl get sndiod flags)" 
+
+  # update flags for sndiod(8) in rcctl(8), if necessary
+  if [ "$_new_flags" != "$_rcctl_flags" ] ; then
+    ! rcctl set sndiod flags $_new_flags \
+      && printf "%s: failed to change sndiod flags from '%s' to '%s'!\n" "$tool" "$_rcctl_flags" "$_new_flags" >&2 \
+      && exit 1
+  fi
+
+  if $_sndiod_running ; then
+    if [ "$_process_flags" != "$_new_flags" ] ; then
+      # if sndiod(8) is running and rcctl flags _do not_ match running flags, restart sndiod via rcctl
+      ! rcctl restart sndiod >/dev/null 2>&1 \
+        && printf "%s: failed to restart sndiod!\n" "$tool" >&2 \
+        && exit 1
+    else
+      # if sndiod(8) is running and rcctl flags already match running flags, no change necessary, but warn
+      printf "%s: running sndiod process already has specified flags ('%s')\n" "$tool" "$_new_flags" >&2
+    fi
+  else
+    # warn if sndiod(8) is not running
+    printf "%s: sndiod not running!\n" "$tool" >&2
+  fi
+}
+
 validate_var() {
   _valid=false
-  case "$1" in
-    "record.audio"|"record.video")
-      _valid=true
-      ;;
-  esac
+  for _control in $controls ; do
+    [ "$1" = "$_control" ] \
+      && _valid=true \
+      && break
+  done
   $_valid
 }
 
@@ -95,6 +179,14 @@ get_var() {
       _input="${_var##*.}"
       ! $_no_name && printf "%s=" "$_var"
       sysctl -n "kern.${_input}.record"
+      ;;
+    "mix.monitor")
+      _sndiod_flags="$(get_sndiod_flags)"
+      _sndiod_mon=0
+      are_sndiod_monitor_flags "$_sndiod_flags" \
+        && _sndiod_mon=1
+      ! $_no_name && printf "%s=" "$_var"
+      printf "%i\n" "$_sndiod_mon"
       ;;
     *)
       usage && exit 2
@@ -128,6 +220,35 @@ set_var() {
       ! $_quiet && ! $_no_name && printf "%s=" "$_var"
       sysctl $($_quiet && echo "-q") -n "kern.${_input}.record=${_value}"
       ;;
+    "mix.monitor")
+      _sndiod_flags="$(get_sndiod_flags)"
+      _sndiod_mon="$(get_var "$_var" true)"
+
+      # if toggling the value, get the current value and negate it (silently)
+      [ "$_value" = "!" ] && _value="$(( ! _sndiod_mon ))"
+
+      # if changing the mix monitor state, update the rcctl flags
+      if [ "$_value" != "$_sndiod_mon" ] ; then
+        # if changing from no monitor mix to monitor mix
+        if [ "$_sndiod_mon" -eq 0 ] ; then
+          # save the original sndiod(8) flags in /var/run as a backup
+          ! mkdir -p "$run_path" \
+            && printf "%s: failed to create '%s' directory in /var/run!" "$tool" "$run_path" >&2 \
+            && exit 1
+          ! printf "sndiod_flags=%s" "$_sndiod_flags" >"${run_path}/sndiod" \
+            && printf "%s: failed to save original sndiod flags ('%s') to '%s/sndiod'!\n" "$tool" "$_sndiod_flags" "$run_path" >&2 \
+            && exit 1
+
+          # append the monitor mix flags to the sndiod(8) flags
+          set_sndiod_flags "$_sndiod_flags $sndiod_monitor_flags"
+        else
+          # remove the monitor mix flags from the sndiod(8) flags
+          set_sndiod_flags "$(remove_sndiod_monitor_flags "$_sndiod_flags")"
+        fi
+      fi
+      ! $_quiet && ! $_no_name && printf "%s=" "$_var"
+      ! $_quiet && printf "%s\n" "$_value"
+      ;;
     *)
       usage && exit 2
       ;;
@@ -137,14 +258,17 @@ set_var() {
 monitor() {
   _audio_prev="$(get_var "record.audio" true)"
   _video_prev="$(get_var "record.video" true)"
+  _mix_mon_prev="$(get_var "mix.monitor" true)"
   printf "record.audio=%s\n" "$_audio_prev"
   printf "record.video=%s\n" "$_video_prev"
+  printf "mix.monitor=%s\n" "$_mix_mon_prev"
 
   while true ; do
     sleep "$monitor_seconds"
 
     _audio_new="$(get_var "record.audio" true)"
     _video_new="$(get_var "record.video" true)"
+    _mix_mon_new="$(get_var "mix.monitor" true)"
 
     if [ "$_audio_new" -ne "$_audio_prev" ] ; then
       printf "record.audio=%i\t#changed\n" "$_audio_new"
@@ -153,6 +277,10 @@ monitor() {
     if [ "$_video_new" -ne "$_video_prev" ] ; then
       printf "record.video=%i\t#changed\n" "$_video_new"
       _video_prev="$_video_new"
+    fi
+    if [ "$_mix_mon_new" -ne "$_mix_mon_prev" ] ; then
+      printf "mix.monitor=%i\t#changed\n" "$_mix_mon_new"
+      _mix_mon_prev="$_mix_mon_new"
     fi
   done
 }
@@ -197,6 +325,7 @@ case "$mode" in
     require_root
     [ $# -gt 0 ] && printf "%s: toggling via '-t' option, so ignoring specified control(s): %s\n" "$tool" "$@" >&2
 
+    # IMPORTANT: toggle _only_ record.* values, not all controls!
     for _name in record.audio record.video ; do
       set_var "$_name" "!" "$quiet" "$no_name"
     done
@@ -243,7 +372,7 @@ case "$mode" in
         shift
       done
     else
-      for _name in record.audio record.video ; do
+      for _name in $controls ; do
         mode="get"
         get_var "$_name" "$no_name"
       done
