@@ -1,42 +1,63 @@
-.Dd $Mdocdate: October 23 2025 $
+.Dd $Mdocdate: November 14 2025 $
 .Dt RECORDCTL 8
 .Os
 .Sh NAME
 .Nm recordctl
-.Nd enable and disable kernel audio or video recording
+.Nd manipulate controls for audio and video recording
 .Sh SYNOPSIS
 .Nm
-.Bk -words
-.Op Fl dhmnqt
-.Op Ar name Ns Op = Ns Ar value
-.Ek
+.Op Fl adh
+.Nm
+.Op Fl n
+.Fl t
+.Nm
+.Op Fl n
+.Ar name ...
+.Nm
+.Op Fl q
+.Ar name Ns = Ns Ar value ...
+.Nm
+.Op Fl c Ar seconds
+.Fl m
 .Sh DESCRIPTION
 The 
 .Nm
-utility provides a convenient way to enable, disable, or toggle audio and/or video recording in the kernel by setting the 
+utility can display or manipulate controls of
+.Xr sysctl 8 ,
+.Xr sndiod 8 ,
+and
+.Xr rcctl 8
+for audio and video recording, especially: enable or disable audio and/or video recording in the kernel by setting the
 .Cm kern.audio.record
-and 
+and
 .Cm kern.video.record
 .Xr sysctl 8
-variables respectively. Alternatively, it can display whether audio and/or video recording is enabled in the kernel or monitor for changes in state.
+variables, respectively; enable or disable an audio monitor mix in the
+.Xr sndiod 8
+server by updating flags and restarting the process via
+.Xr rcctl 8 .
 .Pp
 The options are as follows:
-.Bl -tag -width Ds
+.Bl -tag -width "-c seconds"
 .It Fl a
 Display the value of all recording controls. This is the default, if no parameters
 are given to 
-.Nm recordctl .
-.It Fl c
+.Nm .
+.It Fl c Ar seconds
 Set the number of seconds delay between checks of the state of
 .Xr sysctl 8
-variables when operating in monitoring mode using the
+variables and
+.Xr sndiod 8
+process and
+.Xr rcctl 8
+flags, when operating in monitoring mode using the
 .Cm -m
 option.
 .It Fl d
 Dump the raw list of available controls and exit.  Useful as a debugging tool.
 .It Fl m
-Monitor and display recording state changes. Output format is the same as
-.Xr sndioctl 8
+Monitor and display audio and video recording controls changes. Output format is the same as
+.Xr sndioctl 1
 .Cm -m
 monitor option.
 .It Fl n
@@ -79,6 +100,7 @@ The set of available controls is:
 .It Sy "Name" Ta Sy "Equivalent To"
 .It Dv "record.audio" Ta "sysctl kern.audio.record"
 .It Dv "record.video" Ta "sysctl kern.video.record"
+.It Dv "mix.monitor" Ta "rcctl get sndiod flags"
 .El
 .Pp
 The general format (in both getting and setting a control value) is:
@@ -139,8 +161,21 @@ Toggle only video recording:
 .Sh SEE ALSO
 .Xr sysctl 8 ,
 .Xr mixerctl 8 ,
-.Xr sndioctl 1
+.Xr sndioctl 1 ,
+.Xr sndiod 8 ,
+.Xr rcctl 8
 .Sh HISTORY
+Version 0.3 introduced the
+.Fl m
+option, monitoring and displaying changes to recording controls, similar to
+.Xr sndioctl 1
+.Fl m
+monitor mode. It also introduced the
+.Cm mix.monitor
+control which corresponds to whether
+.Xr sndiod 8
+is configured to expose a monitor mix of all audio being ouput by the system.
+.Pp
 Version 0.2 introduced a significant change in the options and parameters syntax, switching to a primarily control-based syntax similar to
 .Xr sysctl 8 ,
 .Xr mixerctl 8 ,
