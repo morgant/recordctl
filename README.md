@@ -86,12 +86,13 @@ Online documentation (in the traditional sense: on a running OpenBSD system, not
 man recordctl
 ```
 
-To show the audio/video recording states (`0` for disabled, `1` for enabled):
+To show the state of all recording controls (`0` for disabled, `1` for enabled):
 
 ```
 $ recordctl
 record.audio=0
 record.video=0
+mix.monitor=0
 ```
 
 To quickly toggle both audio/video recording states:

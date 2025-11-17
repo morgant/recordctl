@@ -138,11 +138,12 @@ control values are toggled to their opposite state (0 -> 1 or 1 -> 0) with the v
 .Em stdout . Any specific controls specified are ignored.
 
 .Sh EXAMPLES
-Show both audio and video recording control values:
+Show all recording controls and their values:
 .Pp
-.Dl # recordctl
+.Dl $ recordctl
 .Dl record.audio=0
 .Dl record.video=0
+.Dl mix.monitor=0
 .Pp
 Toggle both audio and video recording:
 .Pp
@@ -158,6 +159,20 @@ Toggle only video recording:
 .Pp
 .Dl # recordctl record.video=!
 .Dl record.video=0
+.Pp
+Check whether
+.Xr sndiod 8
+is configured for a monitor mix:
+.Pp
+.Dl $ recordctl mix.monitor
+.Dl mix.monitor=0
+.Pp
+Configure
+.Xr sndiod 8
+for a monitor mix, including restarting the process if necessary:
+.Pp
+.Dl # recordctl mix.monitor=1
+.Dl mix.monitor=1
 .Sh SEE ALSO
 .Xr sysctl 8 ,
 .Xr mixerctl 8 ,
