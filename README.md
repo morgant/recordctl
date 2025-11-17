@@ -20,7 +20,7 @@ recordctl(8) provides a simple, extensible, and shell script-friendly, command l
 * Flexible and extensible syntax, similar to that of [sysctl(8)](https://man.openbsd.org/man8/sysctl.8), [mixerctl(8)](https://man.openbsd.org/mixerctl.8), and [sndioctl(1)](https://man.openbsd.org/sndioctl.1).
 * Shell scripting convenience options:
     * `-n` to not output a control's name when getting/setting the value, simplifying setting shell variable values
-    * `-s` to not output a control's name or value when setting the value, reducing the need to redirect output to `/dev/null`
+    * `-q` to not output a control's name or value when setting the value, reducing the need to redirect output to `/dev/null`
 * `-m` monitor mode which outputs the initial value of all controls and displays any change in value over time
 * Getting control values does not require root privileges, but setting control values does
 * Simplifies [doas(1)](https://man.openbsd.org/doas.1) and [doas.conf(5)](https://man.openbsd.org/doas.conf.5) configuration as you can more easily allow/restrict usage of recordctl(8) than the many potential parameters for sysctl(8) and rcctl(8)
