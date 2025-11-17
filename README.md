@@ -90,6 +90,14 @@ cd recordctl
 doas make install
 ```
 
+If you would like a specific unprivileged user to change recording controls without a password by executing recordctl(8) with [doas(1)](https://man.openbsd.org/doas), back up your [doas.conf(5)](https://man.openbsd.org/doas.conf) and add the following line to your `/etc/doas.conf` (replacing `<username>` with the appropriate username):
+
+```
+permit nopass <username> cmd recordctl
+```
+
+**IMPORTANT:** _Allowing an unprivileged user to change recording controls without entering a password will reduce the privacy and security of your OpenBSD system!_
+
 ### Uninstall
 
 From the same local clone of the git repository:
