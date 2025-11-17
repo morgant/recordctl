@@ -21,7 +21,7 @@
 #                       Added new 'n' option to supress printing control
 #                       name and only print value. Replaced use of echo
 #                       with printf. Updated usage output.
-# v0.3.0 - 2025-11-07 - Morgan Aldridge
+# v0.3.0 - 2025-11-17 - Morgan Aldridge
 #                       Implemented previously stubbed-out monitor mode,
 #                       including new '-c' option for specifying the
 #                       number of seconds between checks of applicable
@@ -32,6 +32,8 @@
 #                       new 'mix.monitor' control for checking and/or
 #                       configuring appropriate monitor mix sndiod(8) flags
 #                       via rcctl(8) and restarting sndiod(8), as necessary.
+#                       Added new '-d' option for dumping all controls and
+#                       their possible values.
 #
 # LICENSE:
 #
@@ -165,7 +167,7 @@ validate_value() {
 }
 
 # @param _var [String] the name of the variable to get the value for
-# @param _no_name ["true", "false"] (optional) whether to output the variable name with the value (default: "true")
+# @param _no_name ["true", "false"] (optional) whether to _not_ output the variable name with the value (default: "false")
 get_var() {
   [ -z "$1" ] && usage && exit 2
 
@@ -298,6 +300,9 @@ while getopts ac:dhmnqt arg ; do
     c)
       monitor_seconds="$OPTARG"
       ;;
+    d)
+      mode="dump"
+      ;;
     h)
       usage && exit
       ;;
@@ -321,6 +326,12 @@ done
 shift $((OPTIND - 1))
 
 case "$mode" in
+  dump)
+    for _name in $controls ; do
+      _value="$(get_var "$_name" true)"
+      printf "%s=0..1 (%s)\n" "$_name" "$_value"
+    done
+    ;;
   toggle)
     require_root
     [ $# -gt 0 ] && printf "%s: toggling via '-t' option, so ignoring specified control(s): %s\n" "$tool" "$@" >&2
