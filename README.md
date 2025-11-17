@@ -3,7 +3,7 @@ by Morgan Aldridge <morgant@makkintosshu.com>
 
 ## OVERVIEW
 
-`recordctl` is a command line convenience utility for manipulating audio and video recording controls under [OpenBSD](https://www.openbsd.org/). OpenBSD defaults to disabling both audio and video recording at the kernel level for security and privacy reasons. recordctl(8) exists to simplify enabling, disabling, or toggling audio/video recording in the kernel as well as a system audio monitor mix in the [sndiod(8)](https://man.openbsd.org/sndiod.8) audio server (useful for screencasting.)
+`recordctl` is a command line convenience utility for manipulating audio and video recording controls under [OpenBSD](https://www.openbsd.org/). OpenBSD defaults to disabling both audio and video recording at the kernel level for security and privacy reasons. recordctl(8) exists to simplify enabling, disabling, or toggling audio/video recording in the kernel as well as a system audio [monitor mix](https://www.openbsd.org/faq/faq13.html#recordmon) in the [sndiod(8)](https://man.openbsd.org/sndiod.8) audio server (useful for screencasting.)
 
 recordctl(8) provides a simple, extensible, and shell script-friendly, command line interface with sensible defaults. Like its cousins [sysctl(8)](https://man.openbsd.org/sysctl.8), [mixerctl(8)](https://man.openbsd.org/mixerctl.8), and [sndioctl(1)](https://man.openbsd.org/sndioctl.1), the controls are described using a “Management Information Base” (MIB) style name, using a dotted set of components, and has options which make it easier to manage programmatically via shell scripts. Similar to sndioctl(1), it also provides a mode to continuously monitor and display controls' changes over time.
 
@@ -58,7 +58,7 @@ Ahhhh, much nicer!
     * Get, set, or toggle the value of sysctl(8)'s `kern.audio.record` with the shorter `record.audio` control
     * Get, set, or toggle the value of sysctl(8)'s `kern.video.record` with the shorter `record.video` control
     * Quickly toggle both `record.audio` and `record.video` with the `-t` (toggle) option
-* Manage the configuration of an audio monitor mix in sndiod(8):
+* Manage the configuration of an audio [monitor mix](https://www.openbsd.org/faq/faq13.html#recordmon) in sndiod(8):
     * Get, set, or toggle a monitor mix configuration with the `mix.monitor` control
     * Automatically restart sndiod(8), if necessary
 * Defaults to showing the state of all controls (`record.audio`, `record.video`, and `mix.monitor`)
@@ -70,7 +70,19 @@ Ahhhh, much nicer!
 * Getting control values does not require root privileges, but setting control values does
 * Simplifies [doas(1)](https://man.openbsd.org/doas.1) and [doas.conf(5)](https://man.openbsd.org/doas.conf.5) configuration as you can more easily allow/restrict usage of recordctl(8) than the many potential parameters for sysctl(8) and rcctl(8)
 
-## INSTALLATION
+## INSTALLATION & REMOVAL
+
+### Prerequisites
+
+* [OpenBSD 6.9](https://www.openbsd.org/69.html) or newer
+
+Optional, if installing from this git repo:
+
+* Git
+
+### Install
+
+Clone this git repository and install with `make`:
 
 ```
 git clone git@github.com:morgant/recordctl.git
@@ -78,7 +90,15 @@ cd recordctl
 doas make install
 ```
 
-## USAGE
+### Uninstall
+
+From the same local clone of the git repository:
+
+```
+doas make uninstall
+```
+
+## USAGE EXAMPLES
 
 Online documentation (in the traditional sense: on a running OpenBSD system, not on the Internet) is available via the recordctl(8) manual page:
 
