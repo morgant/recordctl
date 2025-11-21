@@ -195,6 +195,10 @@ Quick toggle of audio and video recording in the kernel? `doas recordctl -t`. Ma
 
 Ahhhh, much nicer!
 
+## CHANGE LOG
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
 ## LICENSE
 
 Released under the [MIT license](LICENSE).

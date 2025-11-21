@@ -24,12 +24,12 @@
 # v0.3.0 - 2025-11-17 - Morgan Aldridge
 #                       Implemented previously stubbed-out monitor mode,
 #                       including new '-c' option for specifying the
-#                       number of seconds between checks of applicable
-#                       sysctl(8) variables. Improved error messages and
-#                       warnings when incompatible options and arguments
-#                       are combined. Only requires root privileges for set 
-#                       and toggle functionality, not get or monitor. Added
-#                       new 'mix.monitor' control for checking and/or
+#                       number of seconds between checks of controls'
+#                       values. Improved error messages and warnings when
+#                       incompatible options and arguments are combined.
+#                       Only requires root privileges for set and toggle
+#                       functionality, not get or monitor. Added new
+#                       'mix.monitor' control for checking and/or
 #                       configuring appropriate monitor mix sndiod(8) flags
 #                       via rcctl(8) and restarting sndiod(8), as necessary.
 #                       Added new '-d' option for dumping all controls and
