@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_n/a_
+
+## [0.3.0] - 2025-11-21
+
 ### Added
 
 * `recordctl`:
@@ -86,7 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         * Supports quieting (`-q`) output of sysctl(8) output when setting state
     * Stubs a monitor (`-m`) mode (see sndioctl(1) `-m`) for future implementation
 
-[unreleased]: https://github.com/morgant/recordctl/compare/0.2...main
+[unreleased]: https://github.com/morgant/recordctl/compare/0.3...main
+[0.3.0]: https://github.com/morgant/recordctl/compare/0.2...0.3
 [0.2.0]: https://github.com/morgant/recordctl/compare/0.1.2...0.2
 [0.1.2]: https://github.com/morgant/recordctl/compare/0.1.1...0.1.2
 [0.1.1]: https://github.com/morgant/recordctl/compare/0.1...0.1.1

@@ -21,7 +21,7 @@
 #                       Added new 'n' option to supress printing control
 #                       name and only print value. Replaced use of echo
 #                       with printf. Updated usage output.
-# v0.3.0 - 2025-11-17 - Morgan Aldridge
+# v0.3.0 - 2025-11-21 - Morgan Aldridge
 #                       Implemented previously stubbed-out monitor mode,
 #                       including new '-c' option for specifying the
 #                       number of seconds between checks of controls'

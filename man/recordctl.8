@@ -1,4 +1,4 @@
-.Dd $Mdocdate: November 14 2025 $
+.Dd $Mdocdate: November 21 2025 $
 .Dt RECORDCTL 8
 .Os
 .Sh NAME
@@ -182,10 +182,11 @@ for a monitor mix, including restarting the process if necessary:
 .Sh HISTORY
 Version 0.3 introduced the
 .Fl m
-option, monitoring and displaying changes to recording controls, similar to
+option, monitoring and displaying changes to recording controls, and the
+.Fl d
+option, displaying all controls and their potential values, equivalent to their respective
 .Xr sndioctl 1
-.Fl m
-monitor mode. It also introduced the
+options. It also introduced the
 .Cm mix.monitor
 control which corresponds to whether
 .Xr sndiod 8
